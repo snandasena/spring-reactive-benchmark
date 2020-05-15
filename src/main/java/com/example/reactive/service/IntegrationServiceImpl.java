@@ -1,30 +1,70 @@
 package com.example.reactive.service;
 
+import com.example.reactive.graphql.QueryService;
+import com.example.reactive.models.Query;
+import graphql.ExecutionResult;
+import graphql.GraphQL;
+import graphql.schema.GraphQLSchema;
+import graphql.schema.idl.RuntimeWiring;
+import graphql.schema.idl.SchemaGenerator;
+import graphql.schema.idl.SchemaParser;
+import graphql.schema.idl.TypeDefinitionRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-import java.util.Random;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 
 @Service
 public class IntegrationServiceImpl implements IntegrationService {
+    private static final String SCHEMA =
+            "type Query {\n" +
+                    "    bookById(id: ID): Book\n" +
+                    "}\n" +
+                    "type Book {\n" +
+                    "    id: ID\n" +
+                    "    name: String\n" +
+                    "    pageCount: Int\n" +
+                    "    author: Author\n" +
+                    "}\n" +
+                    "type Author {\n" +
+                    "    id: ID\n" +
+                    "    firstName: String\n" +
+                    "    lastName: String\n" +
+                    "}";
 
     @Autowired
     private ExecutorService executorService;
-    Integer max = 2000;
-    Integer min = 2000;
-    Random random = new Random();
+
+    @Autowired
+    private QueryService queryService;
 
     @Override
-    public Mono<String> doIntegrate() {
+    public Mono<Object> doIntegrate(Mono<Query> query) {
+        if (query == null) throw new IllegalArgumentException();
+
         return Mono.create(sink -> {
             executorService.submit(() -> {
                 try {
-                    int millis = random.nextInt(max);
-                    System.out.println(String.format("inside the doIntegrate(%o)", millis));
-                    Thread.sleep(2000);
-                    sink.success("Hello!");
+                    SchemaParser schemaParser = new SchemaParser();
+                    TypeDefinitionRegistry typeDefinitionRegistry = schemaParser.parse(SCHEMA);
+
+                    // need to be checked for complex entities
+                    RuntimeWiring runtimeWiring = RuntimeWiring.newRuntimeWiring()
+                            .type("Query", builder ->
+                                    builder.dataFetcher("bookById", queryService.getBookByIdDataFetcher())) // need to research how this works
+                            .type("Book", builder ->
+                                    builder.dataFetcher("author", queryService.getAuthorDataFetcher())) // need to research how this works
+                            .build();
+
+                    SchemaGenerator schemaGenerator = new SchemaGenerator();
+                    GraphQLSchema graphQLSchema = schemaGenerator.makeExecutableSchema(typeDefinitionRegistry, runtimeWiring);
+
+                    GraphQL build = GraphQL.newGraphQL(graphQLSchema).build();
+                    ExecutionResult executionResult = build.execute(Objects.requireNonNull(query.block()).getQuery());
+                    // task execution time
+                    sink.success(executionResult.getData());
                 } catch (Exception e) {
                     throw new RuntimeException("Error");
                 }

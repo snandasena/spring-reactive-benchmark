@@ -33,6 +33,21 @@
             <artifactId>reactor-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>com.graphql-java</groupId>
+            <artifactId>graphql-java</artifactId>
+            <version>2020-05-07T00-47-53-9f8cc8e</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/com.google.guava/guava-gwt -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava-gwt</artifactId>
+            <version>26.0-jre</version>
+        </dependency>
+
+
     </dependencies>
 
     <properties>
