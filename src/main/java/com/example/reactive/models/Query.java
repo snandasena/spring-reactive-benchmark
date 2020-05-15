@@ -1,9 +1,11 @@
 package com.example.reactive.models;
 
+import java.util.Map;
+
 public class Query {
     private String query;
     private String operationName;
-    private Object variables;
+    private Map<String, Object> variables;
 
     public String getQuery() {
         return query;
@@ -21,11 +23,11 @@ public class Query {
         this.operationName = operationName;
     }
 
-    public Object getVariables() {
+    public Map<String, Object> getVariables() {
         return variables;
     }
 
-    public void setVariables(Object variables) {
+    public void setVariables(Map<String, Object> variables) {
         this.variables = variables;
     }
 }

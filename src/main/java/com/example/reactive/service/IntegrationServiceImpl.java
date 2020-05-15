@@ -2,6 +2,7 @@ package com.example.reactive.service;
 
 import com.example.reactive.graphql.QueryService;
 import com.example.reactive.models.Query;
+import graphql.ExecutionInput;
 import graphql.ExecutionResult;
 import graphql.GraphQL;
 import graphql.schema.GraphQLSchema;
@@ -13,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 
 @Service
@@ -62,7 +62,18 @@ public class IntegrationServiceImpl implements IntegrationService {
                     GraphQLSchema graphQLSchema = schemaGenerator.makeExecutableSchema(typeDefinitionRegistry, runtimeWiring);
 
                     GraphQL build = GraphQL.newGraphQL(graphQLSchema).build();
-                    ExecutionResult executionResult = build.execute(Objects.requireNonNull(query.block()).getQuery());
+                    Query gqlQuery = query.block();
+
+                    assert gqlQuery != null;
+                    ExecutionInput executionInput =
+                            ExecutionInput.newExecutionInput()
+                                    .query(gqlQuery.getQuery())
+                                    .operationName(gqlQuery.getOperationName())
+                                    .variables(gqlQuery.getVariables())
+                                    .context(typeDefinitionRegistry)
+                                    .build();
+
+                    ExecutionResult executionResult = build.execute(executionInput);
                     // task execution time
                     sink.success(executionResult.getData());
                 } catch (Exception e) {
