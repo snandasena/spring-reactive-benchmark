@@ -42,6 +42,12 @@ public class IntegrationServiceImpl implements IntegrationService {
         details2.setId(2);
         database.put("findBooks", details2);
 
+        GQLQueryDetails details3 = new GQLQueryDetails();
+        details3.setFieldName("findBook");
+        details3.setTypeName("Query");
+        details3.setId(3);
+        database.put("findBook", details3);
+
 
         return database.get(operationName);
     }

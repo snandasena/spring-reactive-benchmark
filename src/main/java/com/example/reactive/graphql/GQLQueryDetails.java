@@ -4,6 +4,7 @@ public class GQLQueryDetails {
 
     private static final String BOOK_SCHEMA =
             "type Query{\n" +
+                    "    findBook(id:ID):Book\n" +
                     "    findBookById(id:ID):Book\n" +
                     "    findBooks(limit:Int):[Book]\n" +
                     "}\n" +
