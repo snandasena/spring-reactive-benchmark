@@ -1,4 +1,4 @@
-package com.example.reactive.models;
+package com.example.reactive.graphql;
 
 import java.util.Map;
 

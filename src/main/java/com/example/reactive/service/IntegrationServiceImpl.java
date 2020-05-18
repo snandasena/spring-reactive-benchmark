@@ -1,7 +1,8 @@
 package com.example.reactive.service;
 
+import com.example.reactive.graphql.GQLQueryDetails;
+import com.example.reactive.graphql.Query;
 import com.example.reactive.graphql.QueryService;
-import com.example.reactive.models.Query;
 import graphql.ExecutionInput;
 import graphql.ExecutionResult;
 import graphql.GraphQL;
@@ -14,31 +15,36 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 @Service
 public class IntegrationServiceImpl implements IntegrationService {
-    private static final String SCHEMA =
-            "type Query {\n" +
-                    "    bookById(id: ID): Book\n" +
-                    "}\n" +
-                    "type Book {\n" +
-                    "    id: ID\n" +
-                    "    name: String\n" +
-                    "    pageCount: Int\n" +
-                    "    author: Author\n" +
-                    "}\n" +
-                    "type Author {\n" +
-                    "    id: ID\n" +
-                    "    firstName: String\n" +
-                    "    lastName: String\n" +
-                    "}";
 
     @Autowired
     private ExecutorService executorService;
 
     @Autowired
     private QueryService queryService;
+
+    private GQLQueryDetails initDb(String operationName) {
+        Map<String, GQLQueryDetails> database = new HashMap<>();
+        GQLQueryDetails details1 = new GQLQueryDetails();
+        details1.setFieldName("findBookById");
+        details1.setTypeName("Query");
+        details1.setId(1);
+        database.put("findBookById", details1);
+
+        GQLQueryDetails details2 = new GQLQueryDetails();
+        details2.setFieldName("findBooks");
+        details2.setTypeName("Query");
+        details2.setId(2);
+        database.put("findBooks", details2);
+
+
+        return database.get(operationName);
+    }
 
     @Override
     public Mono<Object> doIntegrate(Mono<Query> query) {
@@ -47,24 +53,28 @@ public class IntegrationServiceImpl implements IntegrationService {
         return Mono.create(sink -> {
             executorService.submit(() -> {
                 try {
-                    SchemaParser schemaParser = new SchemaParser();
-                    TypeDefinitionRegistry typeDefinitionRegistry = schemaParser.parse(SCHEMA);
+                    Query gqlQuery = query.block();
+                    assert gqlQuery != null;
+                    String operationName = gqlQuery.getOperationName();
+                    if (operationName == null || operationName.isEmpty()) throw new IllegalArgumentException();
 
-                    // need to be checked for complex entities
+                    GQLQueryDetails gqlQueryDetails = initDb(operationName);
+
+                    SchemaParser schemaParser = new SchemaParser();
+                    TypeDefinitionRegistry typeDefinitionRegistry = schemaParser.parse(gqlQueryDetails.getSchema());
+
+                    // need to be checked for complex entities/ inputs | API, DB, File data source
                     RuntimeWiring runtimeWiring = RuntimeWiring.newRuntimeWiring()
-                            .type("Query", builder ->
-                                    builder.dataFetcher("bookById", queryService.getBookByIdDataFetcher())) // need to research how this works
-                            .type("Book", builder ->
-                                    builder.dataFetcher("author", queryService.getAuthorDataFetcher())) // need to research how this works
+                            .type(gqlQueryDetails.getTypeName(), builder ->
+                                    builder.dataFetcher(gqlQueryDetails.getFieldName(),
+                                            queryService.doQuery(gqlQueryDetails.getId()))) // need to research how this works
                             .build();
 
                     SchemaGenerator schemaGenerator = new SchemaGenerator();
                     GraphQLSchema graphQLSchema = schemaGenerator.makeExecutableSchema(typeDefinitionRegistry, runtimeWiring);
 
                     GraphQL build = GraphQL.newGraphQL(graphQLSchema).build();
-                    Query gqlQuery = query.block();
 
-                    assert gqlQuery != null;
                     ExecutionInput executionInput =
                             ExecutionInput.newExecutionInput()
                                     .query(gqlQuery.getQuery())
@@ -75,8 +85,10 @@ public class IntegrationServiceImpl implements IntegrationService {
 
                     ExecutionResult executionResult = build.execute(executionInput);
                     // task execution time
-                    sink.success(executionResult.getData());
+                    Object data = executionResult.getData();
+                    sink.success(data);
                 } catch (Exception e) {
+                    e.printStackTrace();
                     throw new RuntimeException("Error");
                 }
             });

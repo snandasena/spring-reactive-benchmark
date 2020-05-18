@@ -1,6 +1,6 @@
 package com.example.reactive.handler;
 
-import com.example.reactive.models.Query;
+import com.example.reactive.graphql.Query;
 import com.example.reactive.service.IntegrationService;
 import com.fasterxml.jackson.databind.util.JSONPObject;
 import org.springframework.beans.factory.annotation.Autowired;

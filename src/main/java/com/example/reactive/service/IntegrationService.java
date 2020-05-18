@@ -1,7 +1,6 @@
 package com.example.reactive.service;
 
-import com.example.reactive.models.Query;
-import com.fasterxml.jackson.databind.util.JSONPObject;
+import com.example.reactive.graphql.Query;
 import reactor.core.publisher.Mono;
 
 public interface IntegrationService {

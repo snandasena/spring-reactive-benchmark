@@ -1,0 +1,17 @@
+type Query{
+    findBookById(id:ID):Book
+    findBooks(limit:Int):[Book]
+}
+
+type Book{
+    id:ID
+    name:String
+    pageCount:Int
+    author: Author
+}
+
+type Author{
+    id:ID
+    firstName:String
+    lastName:String
+}
